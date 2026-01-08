@@ -20,8 +20,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy initialization script
+COPY init_db.py .
+
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Create startup script
+RUN echo '#!/bin/bash\n\
+python init_db.py\n\
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Run the application with initialization
+CMD ["/app/start.sh"]
