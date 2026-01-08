@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # MariaDB Database
+  database:
+    image: mariadb:11.2
+    container_name: pms_database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pms_network
+
+  # Backend API (Main Application)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pms_backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_REFRESH_SECRET_KEY: ${JWT_REFRESH_SECRET_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      REGISTRY_API_URL: http://registry:8001
+      REGISTRY_API_KEY: ${REGISTRY_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+      registry:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pms_network
+
+  # Mock Central Patient Registry
+  registry:
+    build:
+      context: ./mock-registry
+      dockerfile: Dockerfile
+    container_name: pms_registry
+    environment:
+      REGISTRY_API_KEY: ${REGISTRY_API_KEY}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./mock-registry:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pms_network
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pms_frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_REGISTRY_URL: http://localhost:8001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm start
+    networks:
+      - pms_network
+
+volumes:
+  mariadb_data:
+
+networks:
+  pms_network:
+    driver: bridge
