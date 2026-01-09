@@ -12,16 +12,19 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   // Redirect if already logged in
-  React.useEffect(() => {
-    if (user) {
-      const dashboardMap: { [key: string]: string } = {
-        patient: '/patient',
-        healthcare_worker: '/worker',
-        admin: '/admin',
-      };
-      navigate(dashboardMap[user.user.role]);
-    }
-  }, [user, navigate]);
+ React.useEffect(() => {
+  if (user?.user?.role) {
+    const dashboardMap: Record<string, string> = {
+      patient: '/patient',
+      healthcare_worker: '/worker',
+      admin: '/admin',
+    };
+
+    navigate(dashboardMap[user.user.role]);
+  }
+}, [user, navigate]);
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
