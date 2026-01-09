@@ -19,32 +19,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load user from localStorage on mount
   useEffect(() => {
-    const storedUser = authService.getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setLoading(false);
-  }, []);
+  const storedUser = authService.getStoredUser();
 
-  const login = async (credentials: LoginRequest) => {
-    try {
-      await authService.login(credentials);
-      const userProfile = authService.getStoredUser();
-      setUser(userProfile);
-    } catch (error) {
-      throw error;
-    }
-  };
+  if (storedUser && storedUser.user && storedUser.user.role) {
+    setUser(storedUser);
+  } else {
+    setUser(null);
+  }
+
+  setLoading(false);
+}, []);
+const login = async (credentials: LoginRequest) => {
+  await authService.login(credentials);
+
+  const userProfile = authService.getStoredUser();
+
+  if (!userProfile || !userProfile.user?.role) {
+    throw new Error('Invalid user profile returned from login');
+  }
+
+  setUser(userProfile);
+};
+
 
   const register = async (userData: RegisterRequest) => {
-    try {
-      await authService.register(userData);
-      const userProfile = authService.getStoredUser();
-      setUser(userProfile);
-    } catch (error) {
-      throw error;
-    }
-  };
+  await authService.register(userData);
+
+  const userProfile = authService.getStoredUser();
+
+  if (!userProfile || !userProfile.user?.role) {
+    throw new Error('Invalid user profile returned from registration');
+  }
+
+  setUser(userProfile);
+};
+
 
   const logout = () => {
     authService.logout();
@@ -52,13 +61,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
-  };
+  user,
+  loading,
+  login,
+  register,
+  logout,
+  isAuthenticated: !!user?.user?.role,
+};
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

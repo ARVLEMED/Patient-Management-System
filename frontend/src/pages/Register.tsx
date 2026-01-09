@@ -69,6 +69,20 @@ const Register: React.FC = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData;
+      // For non-patients, remove patient fields
+if (formData.role !== 'patient') {
+  delete (registerData as any).first_name;
+  delete (registerData as any).last_name;
+  delete (registerData as any).national_id;
+  delete (registerData as any).date_of_birth;
+}
+
+// For non-healthcare_worker, remove those fields if desired
+if (formData.role !== 'healthcare_worker') {
+  delete (registerData as any).facility_id;
+  delete (registerData as any).license_number;
+  delete (registerData as any).job_title;
+}
       await register(registerData);
       // Navigate to appropriate dashboard
       const dashboardMap = {
@@ -78,10 +92,43 @@ const Register: React.FC = () => {
       };
       navigate(dashboardMap[formData.role]);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  console.error('Registration error:', err);
+
+  const detail = err.response?.data?.detail;
+
+  if (!detail) {
+    setError('Registration failed. Please try again.');
+    return;
+  }
+
+  // If detail is a string (custom HTTPException)
+  if (typeof detail === 'string') {
+    setError(detail);
+    return;
+  }
+
+  // If detail is an array (Pydantic validation errors)
+  if (Array.isArray(detail)) {
+    const messages = detail.map(d => {
+      if (typeof d === 'string') return d;
+      if (d.msg) return `${d.loc.join('.')} : ${d.msg}`;
+      return JSON.stringify(d);
+    });
+    setError(messages.join(', '));
+    return;
+  }
+
+  // If detail is an object
+  if (typeof detail === 'object') {
+    setError(detail.msg || JSON.stringify(detail));
+    return;
+  }
+
+  // fallback
+  setError('Registration failed. Please try again.');
+}
+
+
   };
 
   return (

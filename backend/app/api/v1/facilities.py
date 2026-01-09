@@ -13,13 +13,12 @@ router = APIRouter()
 
 @router.get("", response_model=FacilityListResponse)
 async def list_facilities(
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get list of all healthcare facilities
     
-    **Authentication required**
+    **No authentication required - public endpoint for registration**
     
     Returns all registered healthcare facilities in the system.
     """
