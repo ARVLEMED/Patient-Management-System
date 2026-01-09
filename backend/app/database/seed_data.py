@@ -25,10 +25,14 @@ def seed_database():
     try:
         # Check if data already exists
         if db.query(User).first():
-            logger.info("Database already seeded, skipping...")
+            
+            logger.info("Seed script SKIPPED: users already exist")
+
             return
         
         logger.info("Starting database seeding...")
+        logger.info("Seed script STARTED")
+
         
         # 1. Create Healthcare Facilities (3)
         facilities = create_facilities(db)
