@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, status
 from typing import Optional
 import os
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.data.mock_patients import MOCK_PATIENTS
 
@@ -9,6 +10,19 @@ app = FastAPI(
     description="Mock API simulating Kenya's Central Patient Registry",
     version="1.0.0"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://frontend:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Get API key from environment
 REGISTRY_API_KEY = os.getenv("REGISTRY_API_KEY", "default_registry_key")

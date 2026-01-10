@@ -721,11 +721,11 @@ GET http://your-domain.com/health
 1. **Email Verification**
    - Email verification not implemented
    - Users can register with any email
-   - **Workaround:** Manual verification by admin
+
 
 2. **Password Reset**
    - No "forgot password" functionality
-   - **Workaround:** Admin can reset passwords manually
+   - **Planned:** Add password reset via email
 
 3. **File Uploads**
    - Cannot upload medical documents/images
@@ -741,20 +741,15 @@ GET http://your-domain.com/health
 
 6. **Multi-language Support**
    - English only
-   - **Planned:** i18n support for Swahili, French
+   - **Planned:** support for Swahili
 
 7. **Mobile App**
    - No native mobile apps
    - **Current:** Responsive web design works on mobile browsers
 
-### Performance Considerations
-
-- **Database:** Tested with up to 1000 users
-- **Concurrent Users:** Handles 50-100 concurrent users
-- **File Storage:** In-memory only (no persistent file storage)
-- **Search:** Basic search only (no full-text search)
-
----
+8. **Testing**
+   - Limited unit tests
+   - **Planned:** Expand test coverage
 
 ## 🐛 Troubleshooting
 
