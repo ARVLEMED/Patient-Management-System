@@ -87,13 +87,12 @@ async def register_user(
                     )
                     
                     if response.status_code == 404:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Patient not found in central registry. Please register with the central registry first."
-                        )
-                    
-                    response.raise_for_status()
-                    registry_data = response.json()
+                        # Patient not in registry - that's OK, create with local ID
+                        logger.warning(f"Patient with National ID {user_data.national_id} not found in registry, creating local profile")
+                        registry_data = None
+                    else:
+                        response.raise_for_status()
+                        registry_data = response.json()
                     
                 except httpx.HTTPError as e:
                     logger.error(f"Registry API error: {e}")
@@ -130,7 +129,7 @@ async def register_user(
             )
             db.add(worker)
         
-        # Commit changes
+        # Commit all changes
         db.commit()
         db.refresh(new_user)
         

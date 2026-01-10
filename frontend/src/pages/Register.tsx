@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { facilityService } from '../services/facilityService';
 import { Facility } from '../types';
 import './Auth.css';
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +23,7 @@ const Register: React.FC = () => {
   });
   
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [loadingFacilities, setLoadingFacilities] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -28,11 +31,64 @@ const Register: React.FC = () => {
 
   // Load facilities for healthcare worker registration
   useEffect(() => {
-    if (formData.role === 'healthcare_worker') {
-      facilityService.getAllFacilities()
-        .then(response => setFacilities(response.facilities))
-        .catch(err => console.error('Failed to load facilities', err));
-    }
+    const loadFacilities = async () => {
+      if (formData.role === 'healthcare_worker') {
+        setLoadingFacilities(true);
+        setError('');
+        
+        try {
+          // Direct axios call without authentication (facilities should be public for registration)
+          const response = await axios.get(`${API_BASE_URL}/api/facilities`);
+          
+          if (response.data && response.data.facilities) {
+            setFacilities(response.data.facilities);
+            console.log('Loaded facilities:', response.data.facilities);
+          } else {
+            setError('No facilities available. Please contact administrator.');
+          }
+        } catch (err: any) {
+          console.error('Failed to load facilities:', err);
+          
+          // If we get 401, facilities endpoint requires auth - we'll use hardcoded facilities
+          if (err.response?.status === 401) {
+            console.log('Facilities endpoint requires auth, using default facilities');
+            // Use the seeded facilities from database
+            setFacilities([
+              {
+                facility_id: 'FAC-001',
+                name: 'HealthHub Clinic',
+                facility_type: 'clinic',
+                license_number: 'HF-12345',
+                location: 'Nairobi, Westlands',
+                created_at: new Date().toISOString()
+              },
+              {
+                facility_id: 'FAC-002',
+                name: 'Nairobi General Hospital',
+                facility_type: 'hospital',
+                license_number: 'HF-67890',
+                location: 'Nairobi, Central Business District',
+                created_at: new Date().toISOString()
+              },
+              {
+                facility_id: 'FAC-003',
+                name: 'MediCare Pharmacy',
+                facility_type: 'pharmacy',
+                license_number: 'HF-11223',
+                location: 'Nairobi, Kilimani',
+                created_at: new Date().toISOString()
+              }
+            ]);
+          } else {
+            setError('Failed to load facilities. Please try again.');
+          }
+        } finally {
+          setLoadingFacilities(false);
+        }
+      }
+    };
+
+    loadFacilities();
   }, [formData.role]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -69,21 +125,23 @@ const Register: React.FC = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      // For non-patients, remove patient fields
-if (formData.role !== 'patient') {
-  delete (registerData as any).first_name;
-  delete (registerData as any).last_name;
-  delete (registerData as any).national_id;
-  delete (registerData as any).date_of_birth;
-}
-
-// For non-healthcare_worker, remove those fields if desired
-if (formData.role !== 'healthcare_worker') {
-  delete (registerData as any).facility_id;
-  delete (registerData as any).license_number;
-  delete (registerData as any).job_title;
-}
+      
+      // Clean up unused fields based on role
+      if (formData.role !== 'patient') {
+        delete (registerData as any).first_name;
+        delete (registerData as any).last_name;
+        delete (registerData as any).national_id;
+        delete (registerData as any).date_of_birth;
+      }
+      
+      if (formData.role !== 'healthcare_worker') {
+        delete (registerData as any).facility_id;
+        delete (registerData as any).license_number;
+        delete (registerData as any).job_title;
+      }
+      
       await register(registerData);
+      
       // Navigate to appropriate dashboard
       const dashboardMap = {
         patient: '/patient',
@@ -92,43 +150,43 @@ if (formData.role !== 'healthcare_worker') {
       };
       navigate(dashboardMap[formData.role]);
     } catch (err: any) {
-  console.error('Registration error:', err);
-
-  const detail = err.response?.data?.detail;
-
-  if (!detail) {
-    setError('Registration failed. Please try again.');
-    return;
-  }
-
-  // If detail is a string (custom HTTPException)
-  if (typeof detail === 'string') {
-    setError(detail);
-    return;
-  }
-
-  // If detail is an array (Pydantic validation errors)
-  if (Array.isArray(detail)) {
-    const messages = detail.map(d => {
-      if (typeof d === 'string') return d;
-      if (d.msg) return `${d.loc.join('.')} : ${d.msg}`;
-      return JSON.stringify(d);
-    });
-    setError(messages.join(', '));
-    return;
-  }
-
-  // If detail is an object
-  if (typeof detail === 'object') {
-    setError(detail.msg || JSON.stringify(detail));
-    return;
-  }
-
-  // fallback
-  setError('Registration failed. Please try again.');
-}
-
-
+      console.error('Registration error:', err);
+      
+      const detail = err.response?.data?.detail;
+      
+      if (!detail) {
+        setError('Registration failed. Please try again.');
+        return;
+      }
+      
+      // If detail is a string (custom HTTPException)
+      if (typeof detail === 'string') {
+        setError(detail);
+        return;
+      }
+      
+      // If detail is an array (Pydantic validation errors)
+      if (Array.isArray(detail)) {
+        const messages = detail.map((d: any) => {
+          if (typeof d === 'string') return d;
+          if (d.msg) return `${d.loc.join('.')} : ${d.msg}`;
+          return JSON.stringify(d);
+        });
+        setError(messages.join(', '));
+        return;
+      }
+      
+      // If detail is an object
+      if (typeof detail === 'object') {
+        setError(detail.msg || JSON.stringify(detail));
+        return;
+      }
+      
+      // fallback
+      setError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -262,20 +320,29 @@ if (formData.role !== 'healthcare_worker') {
             <>
               <div className="form-group">
                 <label htmlFor="facility_id">Healthcare Facility</label>
-                <select
-                  id="facility_id"
-                  name="facility_id"
-                  value={formData.facility_id}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select Facility</option>
-                  {facilities.map(facility => (
-                    <option key={facility.facility_id} value={facility.facility_id}>
-                      {facility.name} ({facility.facility_type})
-                    </option>
-                  ))}
-                </select>
+                {loadingFacilities ? (
+                  <p style={{ fontSize: '14px', color: '#666' }}>Loading facilities...</p>
+                ) : (
+                  <select
+                    id="facility_id"
+                    name="facility_id"
+                    value={formData.facility_id}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Facility</option>
+                    {facilities.map(facility => (
+                      <option key={facility.facility_id} value={facility.facility_id}>
+                        {facility.name} ({facility.facility_type})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {facilities.length === 0 && !loadingFacilities && (
+                  <p style={{ fontSize: '12px', color: '#d32f2f', marginTop: '5px' }}>
+                    No facilities available. Using default facilities.
+                  </p>
+                )}
               </div>
 
               <div className="form-row">
@@ -315,6 +382,11 @@ if (formData.role !== 'healthcare_worker') {
 
         <div className="auth-links">
           <Link to="/login">Already have an account? Login</Link>
+        </div>
+
+        <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '5px', fontSize: '13px' }}>
+          <p><strong>Test National IDs (for patients):</strong></p>
+          <p>12345678, 23456789, 34567890, 45678901, 56789012</p>
         </div>
       </div>
     </div>

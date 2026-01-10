@@ -107,7 +107,7 @@ const LandingPage: React.FC = () => {
             </button>
             <button onClick={() => navigate('/login')} className="btn-hero btn-hero-secondary">
               <span className="btn-icon">▶</span>
-              Watch Demo
+              Trial Demo With Default Accounts
             </button>
           </div>
 
@@ -320,7 +320,7 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2026 HealthHub. Built for healthcare innovation.</p>
+          <p>&copy; 2026 HealthHub. All rights reserved.</p>
         </div>
       </footer>
     </div>
