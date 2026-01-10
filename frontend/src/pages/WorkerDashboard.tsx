@@ -51,10 +51,21 @@ const WorkerDashboard: React.FC = () => {
       setSearchResult(result);
       setSuccess(`Patient found: ${result.first_name} ${result.last_name}`);
     } catch (err: any) {
+      console.error('Search error:', err);
+      
+      const detail = err.response?.data?.detail;
+      
       if (err.response?.status === 404) {
         setError('Patient not found in central registry');
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const messages = detail.map((d: any) => 
+          typeof d === 'string' ? d : (d.msg || JSON.stringify(d))
+        );
+        setError(messages.join(', '));
       } else {
-        setError('Failed to search patient');
+        setError('Failed to search patient. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -76,12 +87,25 @@ const WorkerDashboard: React.FC = () => {
       const logsData = await accessLogService.getMyWorkerAccessLogs();
       setAccessLogs(logsData.logs);
     } catch (err: any) {
+      console.error('Access patient data error:', err);
+      
+      const detail = err.response?.data?.detail;
+      
       if (err.response?.status === 403) {
-        setError(`Access denied: ${err.response.data.detail}`);
+        // Access denied - show clear message
+        const message = typeof detail === 'string' ? detail : 'Access denied: No valid consent found';
+        setError(message);
       } else if (err.response?.status === 404) {
         setError('Patient not found in local system. Patient must register first.');
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const messages = detail.map((d: any) => 
+          typeof d === 'string' ? d : (d.msg || JSON.stringify(d))
+        );
+        setError(messages.join(', '));
       } else {
-        setError('Failed to access patient data');
+        setError('Failed to access patient data. Please try again.');
       }
     } finally {
       setLoading(false);

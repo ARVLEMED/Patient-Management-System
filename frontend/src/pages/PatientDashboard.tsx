@@ -83,7 +83,40 @@ const PatientDashboard: React.FC = () => {
       const consentsData = await consentService.getPatientConsents(patientId);
       setConsents(consentsData.consents);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to grant consent');
+      console.error('Grant consent error:', err);
+      
+      // Handle Pydantic validation errors
+      const detail = err.response?.data?.detail;
+      
+      if (!detail) {
+        setError('Failed to grant consent. Please try again.');
+        return;
+      }
+      
+      // If detail is a string
+      if (typeof detail === 'string') {
+        setError(detail);
+        return;
+      }
+      
+      // If detail is an array (Pydantic validation errors)
+      if (Array.isArray(detail)) {
+        const messages = detail.map((d: any) => {
+          if (typeof d === 'string') return d;
+          if (d.msg) return `${d.loc?.join('.') || 'Field'}: ${d.msg}`;
+          return JSON.stringify(d);
+        });
+        setError(messages.join(', '));
+        return;
+      }
+      
+      // If detail is an object
+      if (typeof detail === 'object') {
+        setError(detail.msg || detail.message || 'Failed to grant consent');
+        return;
+      }
+      
+      setError('Failed to grant consent. Please try again.');
     }
   };
 
@@ -103,7 +136,20 @@ const PatientDashboard: React.FC = () => {
       const consentsData = await consentService.getPatientConsents(patientId);
       setConsents(consentsData.consents);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to revoke consent');
+      console.error('Revoke consent error:', err);
+      
+      const detail = err.response?.data?.detail;
+      
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const messages = detail.map((d: any) => 
+          typeof d === 'string' ? d : (d.msg || JSON.stringify(d))
+        );
+        setError(messages.join(', '));
+      } else {
+        setError('Failed to revoke consent. Please try again.');
+      }
     }
   };
 
